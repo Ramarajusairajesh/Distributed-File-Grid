@@ -12,6 +12,29 @@ Built a distributed file storage system to reduce read/write latency and ensure 
 
 ---
 
+## System Overview
+
+Distributed File Grid is a distributed file storage service designed for high throughput, low latency, and robust fault tolerance. The system consists of two main server types:
+
+- **Head Server:**  
+  - Entry point for users to upload/download files.  
+  - Stores file metadata and manages chunking (splitting files into 64 MB chunks).  
+  - Monitors the health of chunk servers via heartbeat signals.  
+  - Decides chunk placement based on available storage and server health.  
+  - Handles client requests by reconstructing files from distributed chunks.
+
+- **Chunk Servers:**  
+  - Store actual file chunks, each chunk replicated `n` times across different servers (configurable replication factor).  
+  - On every write or new file creation, verify chunk integrity using hash values.  
+  - Periodically report health and resource usage (storage, CPU, bandwidth) to the head server.
+
+- **Health-Checking Service:**  
+  - Runs on a separate cluster.  
+  - Monitors the head server's health using a standby quorum and leader election.  
+  - If the head server is unresponsive, triggers failover checks and ensures continuous operation.
+
+---
+
 ## Features
 - Distributed, fault-tolerant file storage
 - Asynchronous, multithreaded I/O for high throughput
@@ -28,11 +51,65 @@ Built a distributed file storage system to reduce read/write latency and ensure 
 
 ![image](https://github.com/user-attachments/assets/1497ce36-1209-423c-a113-e5aa68a40af6)
 
-
 - **Head Server:** Manages metadata, coordinates chunk servers, and monitors health.
 - **Chunk Servers:** Store file chunks, handle replication, and respond to health checks.
 - **Health-Checking Service:** Runs on a separate cluster, uses leader election for continuous monitoring.
 - **Protocol Buffers:** Used for all structured communication between nodes.
+
+---
+
+## How It Works
+
+1. **File Upload:**
+   - User uploads a file via the head server.
+   - The head server splits the file into 64 MB chunks.
+   - Each chunk is assigned a replication factor (e.g., 3) and distributed to chunk servers with the most available storage.
+   - Metadata (chunk locations, hashes) is stored by the head server.
+
+2. **File Download:**
+   - User requests a file from the head server.
+   - The head server retrieves all relevant chunks from chunk servers and reconstructs the file for the user.
+
+3. **Health Monitoring:**
+   - Head server sends heartbeat requests to chunk servers.
+   - Chunk servers respond with health status and resource usage.
+   - If a chunk server fails, the head server triggers re-replication of affected chunks to maintain redundancy.
+
+4. **Head Server High Availability:**
+   - A separate health-checking service monitors the head server.
+   - If the head server fails, the service coordinates with standby servers to elect a new leader and maintain service continuity.
+
+5. **Efficient Communication:**
+   - All inter-server communication (heartbeat, metadata, chunk placement, health reports) uses Protocol Buffers (Protobuf) for efficient, versioned serialization.
+
+---
+
+## Workflow Example
+
+- **Replication:**  
+  If the replication factor is 3, each chunk is stored on three different chunk servers. If one server fails, the system automatically re-replicates the chunk to another healthy server.
+
+- **Storage Awareness:**  
+  The head server always places new chunks on servers with the most available storage, balancing load and maximizing efficiency.
+
+- **Odd Number of Servers:**  
+  Both head and chunk servers are deployed in odd numbers to avoid stalemate and ensure quorum-based decisions.
+
+---
+
+## Key Advantages
+
+- **Low Latency:**  
+  Asynchronous, multithreaded I/O and intelligent chunk placement reduce read/write times.
+
+- **Fault Tolerance:**  
+  Automatic re-replication and health monitoring ensure zero data loss during node failures.
+
+- **Scalability:**  
+  Easily add new chunk servers; the system auto-balances and synchronizes data.
+
+- **Extensible:**  
+  Modular design and Protobuf-based communication make it easy to extend and integrate.
 
 ---
 
