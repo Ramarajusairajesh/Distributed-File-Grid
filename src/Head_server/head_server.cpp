@@ -74,6 +74,7 @@ int server_initialization()
                 perror("Error while running redis");
                 return 1;
         }
+        // creating log file
         std::string file_name;
         create_log_file(file_name);
         std::ofstream log_file;
@@ -92,9 +93,12 @@ int server_initialization()
 int main()
 {
         int status = server_initialization();
-        if (status == false)
+        if (status == 1)
         {
                 std::cerr << "Error while initialization the head server" << std::endl;
         }
+
+        int client_cout;
+
         return 0;
 }
