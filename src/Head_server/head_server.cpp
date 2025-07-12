@@ -1,5 +1,6 @@
+#include "head_server.hpp"
 #include "../include/heart_beat_signal.hpp"
-#include "hiredis/hiredis.h"
+#include "../include/request_server.hpp"
 #include <chrono>
 #include <ctime>
 #include <fmt/format.h>
@@ -10,7 +11,6 @@
 #define log_path "/var/log/head_server/server.logs"
 pid_t redis_pid = -1;
 
-int restore() { return 0; }
 int create_log_file(std::string &file_name)
 {
         char buffer[80];
@@ -86,19 +86,45 @@ int server_initialization()
         }
 
         // start a multi threaded async for file recieving server
-
+        int server_status = start_socket();
+        if (server_status == 1)
+        {
+                std::cerr << "Error while creating the socket";
+                return 1;
+        }
+        return 0;
+}
+int clone_primary()
+{
+        std::string primary_head_ip;
+        std::cout << "Primary head server ip address " << std::endl;
+        std::cin >> primary_head_ip;
+        if (primary_head_ip.empty())
+        {
+                std::cout << "Please Enter primary head server ip address" << std::endl;
+        }
         return 0;
 }
 
 int main()
 {
-        int status = server_initialization();
-        if (status == 1)
+        char value;
+        std::cout << "Is this the (P)rimary head server or (S)econdary head server" << std::endl;
+        std::cin >> value;
+        if (value == 'P' || value == 'p')
         {
-                std::cerr << "Error while initialization the head server" << std::endl;
+                int status = server_initialization();
+                if (status == 1)
+                {
+                        std::cerr << "Error while initialization the head server" << std::endl;
+                }
+
+                int client_cout;
         }
 
-        int client_cout;
-
+        else
+        { // clone the primary server into this
+                clone_primary();
+        }
         return 0;
 }

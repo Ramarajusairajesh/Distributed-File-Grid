@@ -173,7 +173,3 @@ pyinstaller --onefile --add-data "model_weights;model_weights" main.py
 - Inspired by distributed file systems such as GFS and HDFS.
 - Uses [Protocol Buffers](https://developers.google.com/protocol-buffers) for serialization.
 
----
-
-## License
-This project is open-source and a work in progress. Contributions are welcome!
