@@ -1,17 +1,12 @@
 syntax = "proto3";
 
-package heartbeat;
-
 message Heartbeat {
-  int32 cpu = 1;
-  int32 disk = 2;
-  int32 count = 3;
-  enum Status {
-    UNKNOWN = 0;
-    ALIVE = 1;
-    DEAD = 2;
-  }
-  Status status = 4;
+  string server_id = 1;
+  int64 timestamp = 2;
+  double storage_used = 3;
+  double storage_total = 4;
+  double cpu_usage = 5;
+  double network_bandwidth = 6;
 }
 
 message ChunkMetadata {
@@ -24,4 +19,4 @@ message ChunkMetadata {
 message FileChunk {
   string chunk_id = 1;
   bytes data = 2;
-}
+} 
