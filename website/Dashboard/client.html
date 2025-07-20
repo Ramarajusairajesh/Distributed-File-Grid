@@ -1,0 +1,194 @@
+import React, { useState } from 'react';
+
+// Main App component
+const App = () => {
+  // State to hold the system data
+  // In a real application, this data would be fetched from an API.
+  // For demonstration, we'll use a hardcoded JSON array.
+  const [systems, setSystems] = useState([
+    {
+      id: 'sys1',
+      name: 'Database Server',
+      status: 'healthy',
+      details: {
+        cpu_usage: '20%',
+        memory_usage: '60%',
+        disk_io: 'normal',
+        last_check: '2025-07-18 10:00:00',
+        logs: 'No critical errors in the last hour.'
+      }
+    },
+    {
+      id: 'sys2',
+      name: 'Web Server',
+      status: 'warning',
+      details: {
+        cpu_usage: '85%',
+        memory_usage: '75%',
+        active_connections: '1500',
+        last_check: '2025-07-18 10:05:00',
+        logs: 'High traffic detected, monitoring required.'
+      }
+    },
+    {
+      id: 'sys3',
+      name: 'Authentication Service',
+      status: 'critical',
+      details: {
+        status: 'down',
+        error_code: '503',
+        last_restart_attempt: '2025-07-18 09:55:00',
+        logs: 'Service failed to start. Check dependencies.'
+      }
+    },
+    {
+      id: 'sys4',
+      name: 'Analytics Engine',
+      status: 'healthy',
+      details: {
+        data_processing_rate: '1000 records/sec',
+        queue_size: '0',
+        last_processed_batch: '2025-07-18 10:08:00',
+        logs: 'All analytics jobs completed successfully.'
+      }
+    },
+    {
+      id: 'sys5',
+      name: 'Payment Gateway',
+      status: 'healthy',
+      details: {
+        transaction_volume: 'high',
+        latency: '20ms',
+        last_audit: '2025-07-17',
+        logs: 'No payment failures reported.'
+      }
+    },
+    {
+      id: 'sys6',
+      name: 'Notification Service',
+      status: 'warning',
+      details: {
+        pending_notifications: '5000',
+        delivery_rate: '90%',
+        last_check: '2025-07-18 10:07:00',
+        logs: 'Some notification delays observed.'
+      }
+    }
+  ]);
+
+  // State to manage the visibility of the detail modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  // State to store the details of the currently selected system
+  const [selectedSystemDetails, setSelectedSystemDetails] = useState(null);
+
+  // Function to determine the status color based on the status string
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'healthy':
+        return 'bg-green-500'; // Green for healthy
+      case 'warning':
+        return 'bg-orange-500'; // Orange for warning
+      case 'critical':
+        return 'bg-red-500';   // Red for critical
+      default:
+        return 'bg-gray-400'; // Default gray
+    }
+  };
+
+  // Function to handle clicking on a system card
+  const handleCardClick = (system) => {
+    setSelectedSystemDetails(system.details); // Set the details to be displayed
+    setIsModalOpen(true); // Open the modal
+  };
+
+  // Function to close the detail modal
+  const closeModal = () => {
+    setIsModalOpen(false); // Close the modal
+    setSelectedSystemDetails(null); // Clear the selected details
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-gray-100 p-4 font-inter">
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+          body {
+            font-family: 'Inter', sans-serif;
+          }
+        `}
+      </style>
+      <header className="text-center mb-10">
+        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 drop-shadow-lg">
+          System Status Dashboard
+        </h1>
+        <p className="text-xl text-gray-400 mt-2">
+          Monitor the health of your services at a glance.
+        </p>
+      </header>
+
+      <main className="container mx-auto px-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Map through the systems array to render each system card */}
+          {systems.map((system) => (
+            <div
+              key={system.id}
+              className="bg-gray-800 rounded-xl shadow-2xl p-6 flex flex-col items-center justify-between cursor-pointer
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-purple-500/30
+                         border border-gray-700 hover:border-purple-500"
+              onClick={() => handleCardClick(system)}
+            >
+              <h2 className="text-2xl font-semibold text-white mb-3 text-center">
+                {system.name}
+              </h2>
+              <div className="flex items-center space-x-3">
+                {/* Status indicator circle */}
+                <div
+                  className={`w-4 h-4 rounded-full ${getStatusColor(system.status)} shadow-md`}
+                ></div>
+                <span className={`text-lg font-medium capitalize ${
+                  system.status === 'healthy' ? 'text-green-400' :
+                  system.status === 'warning' ? 'text-orange-400' :
+                  system.status === 'critical' ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  {system.status}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-4 text-center">
+                Click for details
+              </p>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {/* Detail Modal */}
+      {isModalOpen && selectedSystemDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-3xl p-8 max-w-lg w-full transform transition-all duration-300 scale-100
+                        border border-gray-700 relative">
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold
+                         transition-colors duration-200"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-400 mb-6">
+              System Details
+            </h3>
+            <div className="bg-gray-900 p-6 rounded-lg overflow-auto max-h-96 text-sm">
+              {/* Display JSON details in a pre-formatted block */}
+              <pre className="whitespace-pre-wrap break-words text-gray-300">
+                {JSON.stringify(selectedSystemDetails, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
+

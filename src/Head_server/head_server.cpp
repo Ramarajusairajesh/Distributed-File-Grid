@@ -94,6 +94,9 @@ int server_initialization()
         }
         return 0;
 }
+
+int attach_cluster_servers() { return 0; }
+
 int clone_primary()
 {
         std::string primary_head_ip;
@@ -103,6 +106,8 @@ int clone_primary()
         {
                 std::cout << "Please Enter primary head server ip address" << std::endl;
         }
+
+        // Clone the redi server data
         return 0;
 }
 

@@ -116,7 +116,7 @@ Distributed File Grid is a distributed file storage service designed for high th
 ## Requirements
 - At least 3 machines (preferably an odd number of chunk servers to avoid stalemate)
 - C++17 or later
-- Python 3.8+ (for tooling and PyInstaller, if using the Python interface)
+- Typescript
 - [Protocol Buffers Compiler (protoc)](https://developers.google.com/protocol-buffers)
 
 ---
@@ -139,16 +139,8 @@ cd stable-fast-3d
   protoc -I=protos --cpp_out=include protos/heat_beat.proto
   ```
 
-### 3. (Optional) Build a Standalone Executable with PyInstaller
-If you have a Python interface or tools:
-```bash
-pip install -r requirements.txt
-pip install pyinstaller
-pyinstaller --onefile --add-data "model_weights;model_weights" main.py
-```
-- The standalone executable will be in the `dist/` folder.
 
-### 4. Run the System
+### 3. Run the System
 - Start the head server, chunk servers, and health-checking service as described in the documentation or scripts.
 - Add new nodes to the chain as needed; the system will auto-synchronize files and maintain redundancy.
 
@@ -163,7 +155,7 @@ pyinstaller --onefile --add-data "model_weights;model_weights" main.py
 ---
 
 ## Troubleshooting
-- **Missing Dependencies:** Ensure all system and Python dependencies are installed offline as needed.
+- **Missing Dependencies:** Ensure all system dependencies are installed offline as needed.
 - **Model Weights Not Found:** Place required model/data files in the correct directory or bundle them with PyInstaller.
 - **Stalemate:** Use an odd number of chunk servers to avoid split-brain scenarios.
 
