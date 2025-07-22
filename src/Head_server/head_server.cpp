@@ -1,5 +1,5 @@
 #include "head_server.hpp"
-#include "../include/heart_beat_signal.hpp"
+#include "../heart_beat.hpp"
 #include "../include/request_server.hpp"
 #include <chrono>
 #include <ctime>
@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #define log_path "/var/log/head_server/server.logs"
-pid_t redis_pid = -1;
+// pid_t redis_pid = -1;
 
 int create_log_file(std::string &file_name)
 {
