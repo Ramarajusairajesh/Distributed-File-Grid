@@ -1,8 +1,8 @@
-# Distributed File Grid [Word in Progress]
+# Distributed File Grid [Work in Progress]
 
 ## Project Summary
 
-A complete distributed file storage system designed to reduce read/write latency and ensure fault-tolerant data redundancy across unreliable nodes.
+A work in progress distributed file storage system designed to reduce read/write latency and ensure fault-tolerant data redundancy across unreliable nodes.
 
 - **High-throughput system** using asynchronous, multithreaded I/O to split files into 64 MB chunks with configurable replication
 - **Head server** manages metadata and monitors node health via heartbeat signals with auto-triggered re-replication on failure
