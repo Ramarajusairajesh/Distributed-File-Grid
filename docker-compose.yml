@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  # Head Server
+  head-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.head-server
+    container_name: distributed-file-grid-head-server
+    ports:
+      - "9669:9669"
+      - "6379:6379"  # Redis
+    volumes:
+      - head-server-data:/app/metadata
+      - head-server-logs:/var/log/head_server
+    environment:
+      - SERVER_ID=head_server_1
+      - PORT=9669
+      - REDIS_PORT=6379
+      - REPLICATION_FACTOR=3
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  # Redis for metadata storage
+  redis:
+    image: redis:7-alpine
+    container_name: distributed-file-grid-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+
+  # Cluster Servers
+  cluster-server-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.cluster-server
+    container_name: distributed-file-grid-cluster-1
+    ports:
+      - "8080:8080"
+    volumes:
+      - cluster-storage-1:/app/storage
+    environment:
+      - SERVER_ID=cluster_server_1
+      - STORAGE_PATH=/app/storage
+      - PORT=8080
+      - REPLICATION_FACTOR=3
+      - HEAD_SERVER_IP=head-server
+      - HEAD_SERVER_PORT=9669
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - head-server
+
+  cluster-server-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.cluster-server
+    container_name: distributed-file-grid-cluster-2
+    ports:
+      - "8081:8080"
+    volumes:
+      - cluster-storage-2:/app/storage
+    environment:
+      - SERVER_ID=cluster_server_2
+      - STORAGE_PATH=/app/storage
+      - PORT=8080
+      - REPLICATION_FACTOR=3
+      - HEAD_SERVER_IP=head-server
+      - HEAD_SERVER_PORT=9669
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - head-server
+
+  cluster-server-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.cluster-server
+    container_name: distributed-file-grid-cluster-3
+    ports:
+      - "8082:8080"
+    volumes:
+      - cluster-storage-3:/app/storage
+    environment:
+      - SERVER_ID=cluster_server_3
+      - STORAGE_PATH=/app/storage
+      - PORT=8080
+      - REPLICATION_FACTOR=3
+      - HEAD_SERVER_IP=head-server
+      - HEAD_SERVER_PORT=9669
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - head-server
+
+  # Health Checker
+  health-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile.health-checker
+    container_name: distributed-file-grid-health-checker
+    ports:
+      - "9090:9090"
+    volumes:
+      - health-checker-config:/app/config
+    environment:
+      - CHECKER_ID=health_checker_1
+      - HEARTBEAT_TIMEOUT=60
+      - LEADER_ELECTION_TIMEOUT=30
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - head-server
+      - cluster-server-1
+      - cluster-server-2
+      - cluster-server-3
+
+  # Web Dashboard
+  dashboard:
+    build:
+      context: ./website
+      dockerfile: Dockerfile.dashboard
+    container_name: distributed-file-grid-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://head-server:9669
+      - REACT_APP_HEALTH_CHECKER_URL=http://health-checker:9090
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - head-server
+      - health-checker
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: distributed-file-grid-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - file-grid-network
+    restart: unless-stopped
+    depends_on:
+      - dashboard
+      - head-server
+
+volumes:
+  head-server-data:
+    driver: local
+  head-server-logs:
+    driver: local
+  redis-data:
+    driver: local
+  cluster-storage-1:
+    driver: local
+  cluster-storage-2:
+    driver: local
+  cluster-storage-3:
+    driver: local
+  health-checker-config:
+    driver: local
+
+networks:
+  file-grid-network:
+    driver: bridge

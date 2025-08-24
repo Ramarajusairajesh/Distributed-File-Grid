@@ -131,8 +131,6 @@ const Dashboard = () => {
     }
   ];
 
-
-
   // Function to handle clicking on a system card
   const handleCardClick = (system) => {
     setSelectedSystemDetails(system.details);
@@ -145,77 +143,77 @@ const Dashboard = () => {
     setSelectedSystemDetails(null);
   };
 
-        // Loading state
-      if (loading) {
-        return (
-          <div className="loading-container">
-            <div className="text-center">
-              <div className="loading-spinner"></div>
-              <p className="mt-4 text-xl">Loading system status...</p>
-            </div>
-          </div>
-        );
-      }
+  // Loading state
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="text-center">
+          <div className="loading-spinner"></div>
+          <p className="mt-4 text-xl">Loading system status...</p>
+        </div>
+      </div>
+    );
+  }
 
-      // Error state
-      if (error) {
-        return (
-          <div className="error-container">
-            <div className="text-center">
-              <div className="error-icon">⚠️</div>
-              <h2 className="error-title">Connection Error</h2>
-              <p className="error-message">{error}</p>
-              <p className="error-fallback">Showing mock data for demonstration</p>
-            </div>
-          </div>
-        );
-      }
+  // Error state
+  if (error) {
+    return (
+      <div className="error-container">
+        <div className="text-center">
+          <div className="error-icon">⚠️</div>
+          <h2 className="error-title">Connection Error</h2>
+          <p className="error-message">{error}</p>
+          <p className="error-fallback">Showing mock data for demonstration</p>
+        </div>
+      </div>
+    );
+  }
 
-      return (
-        <div className="dashboard-container">
-          <header className="dashboard-header">
-          <h1 className="dashboard-title">
-            Distributed File Grid Dashboard
-          </h1>
-          <p className="dashboard-subtitle">
-            Real-time monitoring of your distributed storage system
-          </p>
-          <div className="dashboard-timestamp">
-            Last updated: {new Date().toLocaleString()}
-          </div>
-        </header>
+  return (
+    <div className="dashboard-container">
+      <header className="dashboard-header">
+        <h1 className="dashboard-title">
+          Distributed File Grid Dashboard
+        </h1>
+        <p className="dashboard-subtitle">
+          Real-time monitoring of your distributed storage system
+        </p>
+        <div className="dashboard-timestamp">
+          Last updated: {new Date().toLocaleString()}
+        </div>
+      </header>
 
-        <main>
-          <div className="dashboard-grid">
-                      {systems.map((system) => (
-              <div
-                key={system.id}
-                className="system-card"
-                onClick={() => handleCardClick(system)}
-              >
-                <div className="text-center">
-                  <h2 className="system-name">
-                    {system.name}
-                  </h2>
-                  <div className="system-type">
-                    {system.type.replace('_', ' ')}
-                  </div>
+      <main>
+        <div className="dashboard-grid">
+          {systems.map((system) => (
+            <div
+              key={system.id}
+              className="system-card"
+              onClick={() => handleCardClick(system)}
+            >
+              <div className="text-center">
+                <h2 className="system-name">
+                  {system.name}
+                </h2>
+                <div className="system-type">
+                  {system.type.replace('_', ' ')}
                 </div>
-                
-                <div className="status-indicator">
-                  <div
-                    className={`status-dot ${system.status}`}
-                  ></div>
-                  <span className={`status-text ${system.status}`}>
-                    {system.status}
-                  </span>
-                </div>
-                
-                <p className="click-hint">
-                  Click for details
-                </p>
               </div>
-            ))}
+              
+              <div className="status-indicator">
+                <div
+                  className={`status-dot ${system.status}`}
+                ></div>
+                <span className={`status-text ${system.status}`}>
+                  {system.status}
+                </span>
+              </div>
+              
+              <p className="click-hint">
+                Click for details
+              </p>
+            </div>
+          ))}
         </div>
       </main>
 
@@ -245,5 +243,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
-
+export default Dashboard; 

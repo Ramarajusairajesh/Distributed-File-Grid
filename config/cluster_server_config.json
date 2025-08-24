@@ -1,0 +1,10 @@
+{
+  "server_id": "cluster_server_1",
+  "storage_path": "/app/storage",
+  "port": 8080,
+  "replication_factor": 3,
+  "heartbeat_interval": 30,
+  "max_chunk_size": 67108864,
+  "head_server_ip": "head-server",
+  "head_server_port": 9669
+} 

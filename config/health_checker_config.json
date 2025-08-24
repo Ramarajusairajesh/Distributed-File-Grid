@@ -1,0 +1,15 @@
+{
+  "head_servers": [
+    "127.0.0.1:9669",
+    "127.0.0.1:9670",
+    "127.0.0.1:9671"
+  ],
+  "cluster_servers": [
+    "127.0.0.1:8080",
+    "127.0.0.1:8081",
+    "127.0.0.1:8082"
+  ],
+  "heartbeat_timeout": 60,
+  "leader_election_timeout": 30,
+  "checker_id": "health_checker_1"
+} 

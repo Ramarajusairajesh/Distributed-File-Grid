@@ -1,0 +1,17 @@
+{
+  "server_id": "head_server_1",
+  "port": 9669,
+  "redis_port": 6379,
+  "chunk_size": 67108864,
+  "replication_factor": 3,
+  "heartbeat_timeout": 60,
+  "max_connections": 1000,
+  "log_level": "INFO",
+  "metadata_path": "./metadata",
+  "temp_path": "./temp",
+  "cluster_servers": [
+    "127.0.0.1:8080",
+    "127.0.0.1:8081",
+    "127.0.0.1:8082"
+  ]
+} 

@@ -1,0 +1,51 @@
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    pkg-config \
+    libboost-all-dev \
+    libssl-dev \
+    libprotobuf-dev \
+    protobuf-compiler \
+    libfmt-dev \
+    libasio-dev \
+    libhiredis-dev \
+    redis-server \
+    curl \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Generate protobuf files
+RUN mkdir -p generated && protoc --experimental_allow_proto3_optional --cpp_out=generated protos/*.proto
+
+# Build the project
+RUN make clean && make all
+
+# Create necessary directories
+RUN mkdir -p /app/metadata /app/temp /var/log/head_server
+
+# Copy configuration
+COPY config/head_server_config.json /app/
+
+# Expose ports
+EXPOSE 9669 6379
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9669/health || exit 1
+
+# Start the head server
+CMD ["./bin/head_server"] 

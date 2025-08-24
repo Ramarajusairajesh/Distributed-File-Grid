@@ -1,0 +1,25 @@
+Request types:
+	Head Server:
+			-> Send a new file
+			-> Retrieve file
+			-> Delete a file
+			-> create a clone header file
+			-> Attach a new cluster server
+			-> New cluster server replacing the old broken one
+			-> Replicate the head server
+			-> Take the position of primary head server
+			-* Exit the server name space if the servers aren't responding
+			-> Health check the cluster server 
+			-> Remove the cluster server if it's not responding
+	Cluster Server:
+			-> Delete the chunks at Request
+			-> Store and restore the file on Request
+			-> Send health signals to head server 
+			-> Check the chunks hashses after writing any bit to the drive
+
+	Zookeeper : 
+			-> Health check the primary head server 
+			-> Replace the primary head server if it crashes ( using some sort of voting system)
+			-> Also done the health check for the cluster server
+		
+

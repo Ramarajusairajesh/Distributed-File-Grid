@@ -1,73 +1,13 @@
 #include "head_server.hpp"
-#include "../heart_beat.hpp"
+#include "../include/heart_beat.hpp"
 #include "../include/request_server.hpp"
-#include <chrono>
-#include <ctime>
-#include <fmt/format.h>
-#include <fstream>
-#include <string>
-#include <sys/wait.h>
-#include <unistd.h>
-#define log_path "/var/log/head_server/server.logs"
+
 // pid_t redis_pid = -1;
-
-int create_log_file(std::string &file_name)
-{
-        char buffer[80];
-        // Add the data and time for the logs file name
-        auto now                 = std::chrono::system_clock::now();
-        std::time_t current_time = std::chrono::system_clock::to_time_t(now);
-        std::tm *time_stamp      = std::localtime(&current_time);
-        if (time_stamp == nullptr)
-        {
-                std::cerr << "Failed to get local time" << std::endl;
-        }
-        strftime(buffer, 80, "%Y-%m-%d %H:%M:%S", time_stamp);
-
-        file_name = log_path + (std::string)buffer;
-        std::ofstream outputFile(file_name);
-        std::cout << "Log file path" << file_name << std::endl;
-
-        return 0;
-}
-
-void write_logs(std::string &request, std::ofstream &outFile) {}
-
-int runRedisServerInBackground()
-{ // started the redis background server
-        pid_t pid = fork();
-
-        if (pid < 0)
-        {
-                perror("fork failed in runRedisServerInBackground");
-                return -1;
-        }
-        else if (pid == 0)
-        {
-                if (setsid() < 0)
-                {
-                        perror("setsid failed in child");
-                        _exit(1);
-                }
-                close(STDIN_FILENO);
-                close(STDOUT_FILENO);
-                close(STDERR_FILENO);
-                execlp("redis-server", "redis-server", NULL);
-                perror("execlp for redis-server failed in child");
-                _exit(1);
-        }
-        else
-        {
-                std::cout << "Parent process: Redis server child initiated with PID " << pid
-                          << " in background." << std::endl;
-                return 0;
-        }
-}
 
 int server_initialization()
 {
 
-        // Creating the redis daemon
+        // Creating redis daemon
         int redis_status = runRedisServerInBackground();
         if (redis_status == 1)
         {
@@ -95,9 +35,42 @@ int server_initialization()
         return 0;
 }
 
-int attach_cluster_servers() { return 0; }
+int attach_cluster_servers(std::string cluster_ips[], int cluster_port, int machine_count)
+{
+        // Attach cluster server to head server
+        // Check if the given server is a cluster server or not
 
-int clone_primary()
+        int cluster_fd;
+        cluster_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (cluster_fd == -1)
+        {
+                perror("Socket creation failed");
+                return 1;
+        }
+        struct sockaddr_in cluster_addr;
+        memset(&cluster_addr, 0, sizeof(cluster_addr));
+        cluster_addr.sin_family      = AF_INET;
+        cluster_addr.sin_addr.s_addr = INADDR_ANY;
+        cluster_addr.sin_port        = htons(cluster_port);
+        for (int i = 0; i < machine_count; i++)
+        {
+
+                inet_pton(AF_INET, cluster_ips[i].c_str(), &cluster_addr.sin_addr);
+                if (connect(cluster_fd, (struct sockaddr *)&cluster_addr, sizeof(cluster_addr)) < 0)
+                {
+                        std::cerr << "Error connecting to cluster server with IP :"
+                                  << cluster_ips[i] << "on port:" << cluster_port << std::endl;
+                        return 1;
+                }
+                // cluster server present and alive on port
+                // TODO: Implement a custom message so that we can be sure that the machine is a
+                // cluster server rather rather than random service running onn that machine port
+                close(cluster_fd);
+        }
+        return 0;
+}
+
+int create_clone_primary(std::string &ip_addresses, int port)
 {
         std::string primary_head_ip;
         std::cout << "Primary head server ip address " << std::endl;
@@ -106,12 +79,13 @@ int clone_primary()
         {
                 std::cout << "Please Enter primary head server ip address" << std::endl;
         }
+        // create new replica for redis
+        // TODO:  For redis use REPLICAOF to create live copy of one to another
 
-        // Clone the redi server data
         return 0;
 }
 
-int main()
+int main(int argc, char **argv)
 {
         char value;
         std::cout << "Is this the (P)rimary head server or (S)econdary head server" << std::endl;
@@ -129,7 +103,7 @@ int main()
 
         else
         { // clone the primary server into this
-                clone_primary();
+          // create_clone_primary();
         }
         return 0;
 }

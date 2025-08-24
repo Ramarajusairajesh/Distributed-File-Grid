@@ -1,188 +1,207 @@
-#include <chrono>
-#include <cstdint>
-#include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
+#include "system_resources.hpp"
 #include <iostream>
-#include <linux/sockios.h>
-#include <net/if.h>
+#include <fstream>
 #include <sstream>
-#include <string>
-#include <sys/ioctl.h>
 #include <sys/statvfs.h>
 #include <sys/sysinfo.h>
-#include <sys/types.h>
-#include <thread>
+#include <sys/utsname.h>
 #include <unistd.h>
-#include <vector>
+#include <thread>
+#include <chrono>
 
-namespace fs = std::filesystem;
+// Implementation of SystemResources class methods
 
-// Structure to hold CPU usage data
-struct CpuUsage
-{
-        uint64_t user, nice, system, idle, iowait, irq, softirq;
-};
-
-// Structure to hold network stats
-struct NetStats
-{
-        uint64_t rx_bytes;
-        uint64_t tx_bytes;
-};
-
-// Function to read CPU usage from /proc/stat
-CpuUsage read_cpu_usage()
-{
-        std::ifstream stat_file("/proc/stat");
-        std::string line;
-        CpuUsage usage = {0};
-
-        if (std::getline(stat_file, line))
-        {
-                std::istringstream iss(line);
-                std::string cpu;
-                iss >> cpu >> usage.user >> usage.nice >> usage.system >> usage.idle >>
-                    usage.iowait >> usage.irq >> usage.softirq;
-        }
-        return usage;
+long SystemResources::CpuStats::total() const { 
+    return user + nice + system + idle + iowait + irq + softirq + steal; 
 }
 
-// Calculate CPU usage percentage
-double calculate_cpu_usage()
-{
-        CpuUsage prev = read_cpu_usage();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        CpuUsage curr = read_cpu_usage();
-
-        uint64_t prev_total =
-            prev.user + prev.nice + prev.system + prev.idle + prev.iowait + prev.irq + prev.softirq;
-        uint64_t curr_total =
-            curr.user + curr.nice + curr.system + curr.idle + curr.iowait + curr.irq + curr.softirq;
-
-        uint64_t prev_idle = prev.idle + prev.iowait;
-        uint64_t curr_idle = curr.idle + curr.iowait;
-
-        uint64_t total_diff = curr_total - prev_total;
-        uint64_t idle_diff  = curr_idle - prev_idle;
-
-        return total_diff > 0 ? (100.0 * (total_diff - idle_diff)) / total_diff : 0.0;
+long SystemResources::CpuStats::idle_time() const { 
+    return idle + iowait; 
 }
 
-// Get disk usage percentage
-double get_disk_usage()
-{
-        struct statvfs stat;
-        if (statvfs("/", &stat) != 0)
-        {
-                return 0.0;
-        }
-        uint64_t total = stat.f_blocks * stat.f_frsize;
-        uint64_t free  = stat.f_bfree * stat.f_frsize;
-        return 100.0 * (total - free) / total;
+SystemResources::SystemResources() : first_cpu_read_(true) {
+    // Initialize CPU stats
+    read_cpu_stats(prev_cpu_stats_);
 }
 
-// Get RAM usage percentage
-double get_ram_usage()
-{
-        std::ifstream meminfo("/proc/meminfo");
-        std::string line;
-        uint64_t total = 0, free = 0, buffers = 0, cached = 0;
+double SystemResources::get_cpu_usage() {
+    CpuStats current_stats;
+    read_cpu_stats(current_stats);
 
-        while (std::getline(meminfo, line))
-        {
-                std::istringstream iss(line);
-                std::string key;
-                uint64_t value;
-                iss >> key >> value;
+    if (first_cpu_read_) {
+        prev_cpu_stats_ = current_stats;
+        first_cpu_read_ = false;
+        return 0.0;
+    }
 
-                if (key == "MemTotal:")
-                        total = value * 1024; // Convert KB to bytes
-                else if (key == "MemFree:")
-                        free = value * 1024;
-                else if (key == "Buffers:")
-                        buffers = value * 1024;
-                else if (key == "Cached:")
-                        cached = value * 1024;
-        }
+    long total_diff = current_stats.total() - prev_cpu_stats_.total();
+    long idle_diff = current_stats.idle_time() - prev_cpu_stats_.idle_time();
 
-        if (total == 0)
-                return 0.0;
-        uint64_t used = total - (free + buffers + cached);
-        return 100.0 * used / total;
+    if (total_diff == 0) return 0.0;
+
+    double cpu_usage = 100.0 * (1.0 - (double)idle_diff / total_diff);
+    prev_cpu_stats_ = current_stats;
+
+    return cpu_usage;
 }
 
-// Convert bytes to human-readable format
-std::string bytes_to_human_readable(uint64_t bytes)
-{
-        const char *units[] = {"B", "KB", "MB", "GB", "TB"};
-        int unit_index      = 0;
-        double size         = static_cast<double>(bytes);
+double SystemResources::get_memory_usage() {
+    struct sysinfo si;
+    if (sysinfo(&si) != 0) {
+        std::cerr << "Failed to get system info" << std::endl;
+        return 0.0;
+    }
 
-        while (size >= 1024 && unit_index < 4)
-        {
-                size /= 1024;
-                unit_index++;
-        }
+    uint64_t total_memory = si.totalram * si.mem_unit;
+    uint64_t free_memory = si.freeram * si.mem_unit;
+    uint64_t used_memory = total_memory - free_memory;
 
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(2) << size << " " << units[unit_index];
-        return ss.str();
+    return (double)used_memory / total_memory * 100.0;
 }
 
-// Get network bandwidth
-NetStats get_network_stats(const std::string &interface = "enp4s0")
-{
-        NetStats stats = {0, 0};
-        std::ifstream net_file("/proc/net/dev");
-        std::string line;
+double SystemResources::get_disk_usage(const std::string& path) {
+    struct statvfs stat;
+    if (statvfs(path.c_str(), &stat) != 0) {
+        std::cerr << "Failed to get disk stats for " << path << std::endl;
+        return 0.0;
+    }
 
-        while (std::getline(net_file, line))
-        {
-                if (line.find(interface) != std::string::npos)
-                {
-                        std::istringstream iss(line);
-                        std::string iface;
-                        iss >> iface; // Skip interface name
-                        iss >> stats.rx_bytes >> std::ws;
-                        for (int i = 0; i < 7; ++i)
-                                iss >> std::ws; // Skip other fields
-                        iss >> stats.tx_bytes;
-                        break;
-                }
-        }
-        return stats;
+    uint64_t total_blocks = stat.f_blocks;
+    uint64_t free_blocks = stat.f_bavail;
+    uint64_t used_blocks = total_blocks - free_blocks;
+
+    return (double)used_blocks / total_blocks * 100.0;
 }
 
-int main()
-{
-        // Get CPU usage
-        double cpu_usage = calculate_cpu_usage();
-        std::cout << "CPU Usage: " << std::fixed << std::setprecision(2) << cpu_usage << "%"
-                  << std::endl;
-
-        // Get disk usage
-        double disk_usage = get_disk_usage();
-        std::cout << "Disk Usage: " << std::fixed << std::setprecision(2) << disk_usage << "%"
-                  << std::endl;
-
-        // Get RAM usage
-        double ram_usage = get_ram_usage();
-        std::cout << "RAM Usage: " << std::fixed << std::setprecision(2) << ram_usage << "%"
-                  << std::endl;
-
-        // Get network bandwidth
-        NetStats prev_stats = get_network_stats();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        NetStats curr_stats = get_network_stats();
-
-        uint64_t rx_diff = curr_stats.rx_bytes - prev_stats.rx_bytes;
-        uint64_t tx_diff = curr_stats.tx_bytes - prev_stats.tx_bytes;
-
-        std::cout << "Network Received: " << bytes_to_human_readable(rx_diff) << "/s" << std::endl;
-        std::cout << "Network Transmitted: " << bytes_to_human_readable(tx_diff) << "/s"
-                  << std::endl;
-
+uint64_t SystemResources::get_available_disk_space(const std::string& path) {
+    struct statvfs stat;
+    if (statvfs(path.c_str(), &stat) != 0) {
+        std::cerr << "Failed to get disk stats for " << path << std::endl;
         return 0;
+    }
+
+    return stat.f_bavail * stat.f_frsize;
 }
+
+uint64_t SystemResources::get_total_disk_space(const std::string& path) {
+    struct statvfs stat;
+    if (statvfs(path.c_str(), &stat) != 0) {
+        std::cerr << "Failed to get disk stats for " << path << std::endl;
+        return 0;
+    }
+
+    return stat.f_blocks * stat.f_frsize;
+}
+
+uint64_t SystemResources::get_total_memory() {
+    struct sysinfo si;
+    if (sysinfo(&si) != 0) {
+        std::cerr << "Failed to get system info" << std::endl;
+        return 0;
+    }
+
+    return si.totalram * si.mem_unit;
+}
+
+uint64_t SystemResources::get_free_memory() {
+    struct sysinfo si;
+    if (sysinfo(&si) != 0) {
+        std::cerr << "Failed to get system info" << std::endl;
+        return 0;
+    }
+
+    return si.freeram * si.mem_unit;
+}
+
+int SystemResources::get_cpu_count() {
+    std::ifstream file("/proc/cpuinfo");
+    std::string line;
+    int count = 0;
+
+    while (std::getline(file, line)) {
+        if (line.substr(0, 9) == "processor") {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+double SystemResources::get_load_average() {
+    double loadavg[3];
+    if (getloadavg(loadavg, 3) == -1) {
+        std::cerr << "Failed to get load average" << std::endl;
+        return 0.0;
+    }
+
+    return loadavg[0]; // Return 1-minute load average
+}
+
+std::string SystemResources::get_system_info() {
+    struct utsname uts;
+    if (uname(&uts) != 0) {
+        return "Unknown";
+    }
+
+    std::ostringstream oss;
+    oss << uts.sysname << " " << uts.release << " " << uts.machine;
+    return oss.str();
+}
+
+std::string SystemResources::get_hostname() {
+    struct utsname uts;
+    if (uname(&uts) != 0) {
+        return "Unknown";
+    }
+
+    return uts.nodename;
+}
+
+void SystemResources::print_system_status() {
+    std::cout << "System Status:" << std::endl;
+    std::cout << "=============" << std::endl;
+    std::cout << "Hostname: " << get_hostname() << std::endl;
+    std::cout << "System: " << get_system_info() << std::endl;
+    std::cout << "CPU Usage: " << get_cpu_usage() << "%" << std::endl;
+    std::cout << "Memory Usage: " << get_memory_usage() << "%" << std::endl;
+    std::cout << "Disk Usage: " << get_disk_usage() << "%" << std::endl;
+    std::cout << "Load Average: " << get_load_average() << std::endl;
+    std::cout << "CPU Count: " << get_cpu_count() << std::endl;
+    std::cout << "Total Memory: " << (get_total_memory() / (1024*1024*1024)) << " GB" << std::endl;
+    std::cout << "Free Memory: " << (get_free_memory() / (1024*1024*1024)) << " GB" << std::endl;
+    std::cout << "Total Disk: " << (get_total_disk_space() / (1024*1024*1024)) << " GB" << std::endl;
+    std::cout << "Available Disk: " << (get_available_disk_space() / (1024*1024*1024)) << " GB" << std::endl;
+    std::cout << "=============" << std::endl;
+}
+
+bool SystemResources::is_system_healthy() {
+    double cpu_usage = get_cpu_usage();
+    double memory_usage = get_memory_usage();
+    double disk_usage = get_disk_usage();
+
+    // System is healthy if:
+    // - CPU usage < 90%
+    // - Memory usage < 90%
+    // - Disk usage < 95%
+    return cpu_usage < 90.0 && memory_usage < 90.0 && disk_usage < 95.0;
+}
+
+std::string SystemResources::get_health_status() {
+    if (is_system_healthy()) {
+        return "HEALTHY";
+    } else {
+        return "WARNING";
+    }
+}
+
+void SystemResources::read_cpu_stats(CpuStats& stats) {
+    std::ifstream file("/proc/stat");
+    std::string line;
+
+    if (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string cpu;
+        iss >> cpu >> stats.user >> stats.nice >> stats.system >> stats.idle 
+            >> stats.iowait >> stats.irq >> stats.softirq >> stats.steal;
+    }
+} 
