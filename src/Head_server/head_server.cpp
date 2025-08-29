@@ -1,7 +1,9 @@
 #include "head_server.hpp"
+#include "../generator/heart_beat."
+#include "../include/file_search.hpp"
 #include "../include/heart_beat.hpp"
+#include "../include/metadata_manager.hpp"
 #include "../include/request_server.hpp"
-
 // pid_t redis_pid = -1;
 
 int server_initialization()
@@ -64,7 +66,7 @@ int attach_cluster_servers(std::string cluster_ips[], int cluster_port, int mach
                 }
                 // cluster server present and alive on port
                 // TODO: Implement a custom message so that we can be sure that the machine is a
-                // cluster server rather rather than random service running onn that machine port
+                // cluster server rather  than random service running onn that machine port
                 close(cluster_fd);
         }
         return 0;

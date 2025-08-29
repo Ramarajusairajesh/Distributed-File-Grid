@@ -2,31 +2,34 @@ syntax = "proto3";
 
 package chunk_server;
 
-message ChunkServer {
-  string server_id = 1;
-  string ip_address = 2;
-  int32 port = 3;
-  string status = 4;
-  uint32 connection_value = 5;
-  bool is_available = 6;
-  uint64 available_storage = 7;
-  uint64 total_storage = 8;
-  double cpu_usage = 9;
-  double memory_usage = 10;
-  repeated string stored_chunks = 11;
+message ChunkServer
+{
+        string server_id              = 1;
+        string ip_address             = 2;
+        int32 port                    = 3;
+        string status                 = 4;
+        uint32 connection_value       = 5;
+        bool is_available             = 6;
+        uint64 available_storage      = 7;
+        uint64 total_storage          = 8;
+        double cpu_usage              = 9;
+        double memory_usage           = 10;
+        repeated string stored_chunks = 11;
 }
 
-message ChunkRequest {
-  string chunk_id = 1;
-  string operation = 2; // "read", "write", "delete"
-  bytes data = 3;
-  int32 replication_factor = 4;
+message ChunkRequest
+{
+        string chunk_id          = 1;
+        string operation         = 2; // "read", "write", "delete"
+        bytes data               = 3;
+        int32 replication_factor = 4;
 }
 
-message ChunkResponse {
-  string chunk_id = 1;
-  bool success = 2;
-  string error_message = 3;
-  bytes data = 4;
-  repeated string replica_locations = 5;
+message ChunkResponse
+{
+        string chunk_id                   = 1;
+        bool success                      = 2;
+        string error_message              = 3;
+        bytes data                        = 4;
+        repeated string replica_locations = 5;
 }

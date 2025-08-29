@@ -2,33 +2,37 @@ syntax = "proto3";
 
 package heartbeat;
 
-message Heartbeat {
-  string server_id = 1;
-  string server_type = 2; // "head_server", "chunk_server"
-  int32 cpu_usage = 3;
-  int32 memory_usage = 4;
-  int32 disk_usage = 5;
-  int32 active_connections = 6;
-  int64 timestamp = 7;
-  enum Status {
-    UNKNOWN = 0;
-    ALIVE = 1;
-    DEAD = 2;
-    WARNING = 3;
-  }
-  Status status = 8;
-  string ip_address = 9;
-  int32 port = 10;
-  repeated string errors = 11;
+message Heartbeat
+{
+        string server_id         = 1;
+        string server_type       = 2; // "head_server", "chunk_server"
+        int32 cpu_usage          = 3;
+        int32 memory_usage       = 4;
+        int32 disk_usage         = 5;
+        int32 active_connections = 6;
+        int64 timestamp          = 7;
+        enum Status
+        {
+                UNKNOWN = 0;
+                ALIVE   = 1;
+                DEAD    = 2;
+                WARNING = 3;
+        }
+        Status status          = 8;
+        string ip_address      = 9;
+        int32 port             = 10;
+        repeated string errors = 11;
 }
 
-message HeartbeatRequest {
-  string requester_id = 1;
-  int64 timestamp = 2;
+message HeartbeatRequest
+{
+        string requester_id = 1;
+        int64 timestamp     = 2;
 }
 
-message HeartbeatResponse {
-  Heartbeat heartbeat = 1;
-  bool success = 2;
-  string error_message = 3;
+message HeartbeatResponse
+{
+        Heartbeat heartbeat  = 1;
+        bool success         = 2;
+        string error_message = 3;
 }

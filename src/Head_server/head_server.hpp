@@ -1,5 +1,5 @@
 #pragma once
-#include "redis_client.hpp"
+#include "../include/redis_client.hpp"
 #include <chrono>
 #include <ctime>
 #include <fmt/format.h>
@@ -35,6 +35,9 @@ enum request_type
 struct request
 {
         request_type type;
+        std::string user;
+        time_t current_time;
+
         // TODO: Create a request
 };
 
