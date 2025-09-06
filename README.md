@@ -23,7 +23,6 @@ The Distributed File Grid consists of three main components:
   - File upload/download coordination
   - Chunk placement and replication management
   - Health monitoring of cluster servers
-  - Metadata storage using Redis
   - Automatic failover handling
 
 ### 2. Cluster Servers
@@ -55,7 +54,6 @@ The Distributed File Grid consists of three main components:
 - **Web Dashboard**: Modern React-based monitoring interface
 - **Docker Support**: Complete containerized deployment
 - **Protocol Buffers**: Efficient binary communication
-- **Redis Integration**: Fast metadata storage
 - **Asynchronous I/O**: High-performance file operations
 - **Resource Monitoring**: CPU, memory, and disk usage tracking
 
@@ -66,11 +64,12 @@ The Distributed File Grid consists of three main components:
 ### Prerequisites
 
 - **Linux**
-- **C++17** compiler (GCC 7+ or Clang 6+) [since protobufs only support C++ 17+]
+- **C++20** compiler (GCC 7+ or Clang 6+) [since protobufs only support C++ 20+]
 - **CMake** 3.16+
 - **Protocol Buffers** compiler
-- **Redis** server
 - **Docker** and **Docker Compose** (for containerized deployment)
+- **Redis-server** and **Redis-sentinel** with **sw-redis-plus-plus** library 
+[+] Side-Node: Just build your own in memory data store could have saved some times compared to using redis for this.(Reason to use : just want to use REDIS for no reason and for replication without me doing it)
 
 ### Installation
 
@@ -83,17 +82,28 @@ The Distributed File Grid consists of three main components:
    ```bash
    sudo apt-get update
    sudo apt-get install -y build-essential cmake pkg-config \
-       libboost-all-dev libssl-dev libprotobuf-dev protobuf-compiler \
-       libfmt-dev libasio-dev redis-server
+       libssl-dev libprotobuf-dev protobuf-compiler \
+       libfmt-dev libasio-dev
    ```
 
    **Arch Linux:**
 
    ```bash
    sudo pacman -S --needed base-devel cmake pkg-config \
-       boost openssl protobuf fmt asio redis
+        protobuf fmt asio
    ```
 
+
+```bash
+
+# It might not work if you have cmake >=4.x.x . It didn't work for me for the yay , so downloaded the repo and install it.
+yay -S redis-plus-plus
+#For instructions go to https://github.com/sewenew/redis-plus-plus (clone it and install it using cmake and make simple)
+```
+
+```
+
+```
 2. **Build the Project**
 
    ```bash
@@ -184,7 +194,6 @@ Access the web dashboard at http://localhost:3000 to:
    - File received by head server
    - Split into 64MB chunks
    - Chunks distributed to cluster servers based on available storage
-   - Metadata stored in Redis
    - Replication factor enforced across servers
 
 2. **Download**:
@@ -215,17 +224,18 @@ Access the web dashboard at http://localhost:3000 to:
 
 ```
 Distributed-File-Grid/
+├──UniTesting
+├──config
+├──doc
+├──noob_coe
 ├── src/
-│   ├── Head_server/          # Head server implementation
-│   ├── Cluster_Server/       # Cluster server implementation
-│   ├── Health_Checker/       # Health monitoring service
-│   └── include/              # Shared headers and utilities
-├── protos/                   # Protocol Buffer definitions
-├── website/                  # Web dashboard (React)
-├── config/                   # Configuration files
-├── scripts/                  # Service management scripts
-├── test/                     # Test suites
-└── docker-compose.yml        # Docker deployment
+     ├──Cluster_Server
+     ├──Head_Server
+     ├──Health_Checker
+     ├──include
+     ├──protos
+        ├──v1
+
 ```
 
 ### Building from Source
@@ -275,7 +285,6 @@ make test
 
 1. **Service Won't Start**
    - Check if ports are available (9669, 8080-8082, 6379)
-   - Verify Redis is running: `redis-cli ping`
    - Check logs in `logs/` directory
 
 2. **High Resource Usage**
@@ -293,7 +302,6 @@ make test
 - **Head Server**: `logs/head_server.log`
 - **Cluster Servers**: `logs/cluster_server_*.log`
 - **Health Checker**: `logs/health_checker.log`
-- **Redis**: `logs/redis.log`
 
 ### Health Checks
 
@@ -343,4 +351,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Inspired by distributed file systems such as GFS and HDFS
 - Uses [Protocol Buffers](https://developers.google.com/protocol-buffers) for serialization
 - Built with modern C++17 and React technologies
-- Redis for high-performance metadata storage
