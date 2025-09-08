@@ -1,0 +1,51 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 9000,
+    "max_connections": 100
+  },
+  "monitoring": {
+    "heartbeat_interval": 30,
+    "heartbeat_timeout": 60,
+    "max_missed_heartbeats": 3,
+    "health_check_interval": 30,
+    "system_metrics_interval": 60
+  },
+  "cluster_servers": [
+    {
+      "id": 1,
+      "host": "127.0.0.1",
+      "port": 8080,
+      "expected_heartbeat_interval": 30
+    },
+    {
+      "id": 2,
+      "host": "127.0.0.1",
+      "port": 8081,
+      "expected_heartbeat_interval": 30
+    },
+    {
+      "id": 3,
+      "host": "127.0.0.1",
+      "port": 8082,
+      "expected_heartbeat_interval": 30
+    }
+  ],
+  "failover": {
+    "enable_auto_failover": true,
+    "replication_trigger_delay": 60,
+    "max_concurrent_replications": 5
+  },
+  "alerts": {
+    "enable_email_alerts": false,
+    "email_recipients": [],
+    "enable_webhook_alerts": false,
+    "webhook_url": ""
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/health_checker.log",
+    "max_size_mb": 50,
+    "max_files": 5
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 9669,
+    "max_connections": 1000,
+    "timeout_seconds": 30
+  },
+  "storage": {
+    "chunk_size": 67108864,
+    "replication_factor": 3,
+    "max_file_size": 10737418240
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "timeout_seconds": 5,
+    "max_connections": 100
+  },
+  "cluster_servers": [
+    {
+      "id": 1,
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    {
+      "id": 2,
+      "host": "127.0.0.1",
+      "port": 8081
+    },
+    {
+      "id": 3,
+      "host": "127.0.0.1",
+      "port": 8082
+    }
+  ],
+  "health_checker": {
+    "host": "127.0.0.1",
+    "port": 9000,
+    "heartbeat_interval": 30,
+    "heartbeat_timeout": 60,
+    "max_missed_heartbeats": 3
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/head_server.log",
+    "max_size_mb": 100,
+    "max_files": 10
+  }
+}

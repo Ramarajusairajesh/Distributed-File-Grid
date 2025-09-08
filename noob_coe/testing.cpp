@@ -1,69 +1,170 @@
-#pragma once
-#include "../protos/v1/generate/heart_beat.pb.h"
-#include <arpa/inet.h>
-#include <chrono>
-#include <coroutine>
-#include <cstring>
-#include <google/protobuf/timestamp.pb.h>
-#include <google/protobuf/util/time_util.h>
-#include <iostream>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <gtest/gtest.h>
 #include <thread>
-#include <unistd.h>
-int send_signal(std::string server_ip, int server_id, int port = 9000) {
-  int csfd = socket(AF_INET, SOCK_STREAM, 0);
-  char host[256];
-  struct hostent *h;
-  gethostname(host, sizeof(host));
-  h = gethostbyname(host);
-  if (!h) {
-    std::cerr << "gethostname error \"Can't find hostname\"" << std::endl;
-    return 1;
-  }
+#include <chrono>
+#include <vector>
+#include <atomic>
+#include "../src/include/heart_beat_signal.hpp"
 
-  if (csfd < 0) {
-    std::cerr << "Error creating a socket" << std::endl;
-    return 1;
-  }
+using namespace std::chrono_literals;
 
-  struct sockaddr_in serveraddr;
-  memset(&serveraddr, 0, sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_port = htons(port);
-  serveraddr.sin_addr.s_addr = INADDR_ANY;
-  inet_pton(AF_INET, server_ip.c_str(), &serveraddr.sin_addr);
-
-  std::string message = "Hello";
-  heart_beat::v1::HeartBeat hb;
-  hb.set_ip(inet_ntoa(*(struct in_addr *)h->h_addr));
-  hb.set_server_id(server_id);
-  std::string payload;
-  if (hb.SerializeToString(&payload)) {
-    std::cerr << "Failed to serialize heart beat signal" << std::endl;
-    return 1;
-  }
-  uint32_t payload_size = htonl(static_cast<uint32_t>(payload.size()));
-
-  if (connect(csfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-    std::cerr << "Error connecting to the server" << std::endl;
-  }
-  while (true) {
-    google::protobuf::Timestamp *ts = hb.mutable_timestamp();
-    *ts = google::protobuf::util::TimeUtil::GetCurrentTime();
-    if (send(csfd, &payload_size, sizeof(payload_size), 0) <= 0) {
-      std::cerr << "Error sending the heartbeat signal" << std::endl;
-      return 1;
+class HeartbeatTest : public ::testing::Test {
+protected:
+    static constexpr int TEST_PORT = 9001; // Different from default port to avoid conflicts
+    static constexpr int NUM_HEARTBEATS = 5;
+    static constexpr int SERVER_ID = 123;
+    
+    void SetUp() override {
+        // Start a simple echo server in a separate thread
+        server_running = true;
+        server_thread = std::thread([this] { run_echo_server(); });
+        
+        // Give the server time to start
+        std::this_thread::sleep_for(100ms);
     }
-    if (send(csfd, &payload, sizeof(payload), 0) <= 0) {
-      std::cerr << "Error sending the heartbeat signal payload" << std::endl;
-      return 1;
+    
+    void TearDown() override {
+        server_running = false;
+        if (server_thread.joinable()) {
+            server_thread.join();
+        }
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  close(csfd);
-  return 0;
+    
+    void run_echo_server() {
+        int server_fd = socket(AF_INET6, SOCK_STREAM, 0);
+        if (server_fd < 0) {
+            perror("socket");
+            return;
+        }
+        
+        int opt = 1;
+        if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+            perror("setsockopt");
+            close(server_fd);
+            return;
+        }
+        
+        sockaddr_in6 addr{};
+        addr.sin6_family = AF_INET6;
+        addr.sin6_addr = in6addr_any;
+        addr.sin6_port = htons(TEST_PORT);
+        
+        if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+            perror("bind");
+            close(server_fd);
+            return;
+        }
+        
+        if (listen(server_fd, 5) < 0) {
+            perror("listen");
+            close(server_fd);
+            return;
+        }
+        
+        while (server_running) {
+            fd_set read_fds;
+            FD_ZERO(&read_fds);
+            FD_SET(server_fd, &read_fds);
+            
+            timeval timeout{};
+            timeout.tv_sec = 1;
+            
+            int activity = select(server_fd + 1, &read_fds, nullptr, nullptr, &timeout);
+            
+            if (activity < 0) {
+                if (errno == EINTR) continue;
+                perror("select");
+                break;
+            }
+            
+            if (activity > 0 && FD_ISSET(server_fd, &read_fds)) {
+                sockaddr_in6 client_addr{};
+                socklen_t client_len = sizeof(client_addr);
+                
+                int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+                if (client_fd < 0) {
+                    perror("accept");
+                    continue;
+                }
+                
+                // Handle client in a separate thread
+                std::thread([this, client_fd] {
+                    char buffer[1024];
+                    ssize_t bytes_read;
+                    
+                    while ((bytes_read = recv(client_fd, buffer, sizeof(buffer), 0)) > 0) {
+                        // Echo back the received data
+                        send(client_fd, buffer, bytes_read, 0);
+                    }
+                    
+                    close(client_fd);
+                }).detach();
+            }
+        }
+        
+        close(server_fd);
+    }
+    
+    std::thread server_thread;
+    std::atomic<bool> server_running{false};
+};
+
+TEST_F(HeartbeatTest, TestBasicHeartbeat) {
+    // Test basic heartbeat sending
+    int result = send_signal("::1", SERVER_ID, TEST_PORT);
+    ASSERT_EQ(result, 0) << "Failed to send heartbeat";
+    
+    // Add a small delay to ensure the server processes the message
+    std::this_thread::sleep_for(100ms);
 }
 
-int recieve_signal() { return 0; }
+TEST_F(HeartbeatTest, TestMultipleHeartbeats) {
+    // Test sending multiple heartbeats
+    for (int i = 0; i < NUM_HEARTBEATS; ++i) {
+        int result = send_signal("::1", SERVER_ID + i, TEST_PORT);
+        ASSERT_EQ(result, 0) << "Failed to send heartbeat " << i;
+        std::this_thread::sleep_for(50ms);
+    }
+}
+
+TEST_F(HeartbeatTest, TestInvalidServer) {
+    // Test with invalid port (port 1 is usually restricted)
+    int result = send_signal("::1", SERVER_ID, 1);
+    EXPECT_NE(result, 0) << "Expected send to fail on restricted port";
+}
+
+TEST_F(HeartbeatTest, TestConcurrentHeartbeats) {
+    // Test concurrent heartbeat sending
+    constexpr int NUM_THREADS = 10;
+    constexpr int HEARTBEATS_PER_THREAD = 5;
+    
+    std::vector<std::thread> threads;
+    std::atomic<int> success_count{0};
+    
+    for (int i = 0; i < NUM_THREADS; ++i) {
+        threads.emplace_back([&, i] {
+            for (int j = 0; j < HEARTBEATS_PER_THREAD; ++j) {
+                int result = send_signal(
+                    "::1", 
+                    SERVER_ID + i * HEARTBEATS_PER_THREAD + j, 
+                    TEST_PORT
+                );
+                if (result == 0) {
+                    success_count++;
+                }
+                std::this_thread::sleep_for(10ms);
+            }
+        });
+    }
+    
+    for (auto& t : threads) {
+        t.join();
+    }
+    
+    EXPECT_EQ(success_count, NUM_THREADS * HEARTBEATS_PER_THREAD)
+        << "Some heartbeats failed to send";
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

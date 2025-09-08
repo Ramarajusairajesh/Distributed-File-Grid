@@ -82,7 +82,7 @@ The Distributed File Grid consists of three main components:
    ```bash
    sudo apt-get update
    sudo apt-get install -y build-essential cmake pkg-config \
-       libboost-all-dev libssl-dev libprotobuf-dev protobuf-compiler \
+       libssl-dev libprotobuf-dev protobuf-compiler \
        libfmt-dev libasio-dev
    ```
 

@@ -236,3 +236,18 @@ int start_server() {
   // If execl fails
   _exit(1);
 }
+
+void start_daemon() {
+  std::cout << "Starting Head Server daemon..." << std::endl;
+  
+  // Start Redis server in background
+  if (start_server() != 0) {
+    std::cerr << "Failed to start Redis server" << std::endl;
+    return;
+  }
+  
+  // Give Redis time to start
+  sleep(2);
+  
+  std::cout << "Head Server daemon started successfully" << std::endl;
+}
