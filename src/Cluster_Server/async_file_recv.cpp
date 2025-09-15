@@ -157,12 +157,16 @@ private:
         while (running) {
             try {
                 // Send heartbeat to head server
-                async_hb::send_signal("127.0.0.1", server_id, 9000);
-                co_await reactor.sleep_for(std::chrono::seconds(30));
+                int result = async_hb::send_signal("127.0.0.1", server_id, 9000);
+                if (result < 0) {
+                    std::cerr << "Failed to send heartbeat" << std::endl;
+                }
             } catch (const std::exception& e) {
                 std::cerr << "Heartbeat error: " << e.what() << std::endl;
-                co_await reactor.sleep_for(std::chrono::seconds(5));
             }
+            
+            // Sleep outside the try-catch to avoid nested co_await
+            co_await reactor.sleep_for(std::chrono::seconds(30));
         }
     }
     

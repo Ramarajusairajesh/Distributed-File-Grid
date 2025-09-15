@@ -2,6 +2,9 @@
 #include <cstring>
 #include <iostream>
 #include <sys/statvfs.h>
+
+// Include the generated version header
+#include <version.h>
 int main(int argc, char **argv) {
 
   if (argc > 1) {
@@ -15,7 +18,8 @@ int main(int argc, char **argv) {
       return 0;
     }
     if (argv[1] == "-v" or argv[1] == "-V" or argv[1] == "--version") {
-      std::cout << " Current version: " << APP_VERSION << std::endl;
+      std::cout << "Version: " << APP_VERSION_MAJOR << "." << APP_VERSION_MINOR << "." << APP_VERSION_PATCH << std::endl;
+      return 0;
     }
   }
   start_daemon();

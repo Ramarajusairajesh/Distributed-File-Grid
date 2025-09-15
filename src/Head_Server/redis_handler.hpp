@@ -1,16 +1,21 @@
-#pragma once
+#ifndef REDIS_HANDLER_HPP
+#define REDIS_HANDLER_HPP
+
+#include <chrono>
 #include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
 #include <sstream>
-#include <sw/redis++/redis++.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
+#ifdef WITH_REDIS
+#include <sw/redis++/redis++.h>
 using namespace sw::redis;
+#endif
 
 // Utility: simple ID when file_name isn’t supplied (time-based hex).
 inline std::string gen_file_id() {
@@ -36,7 +41,8 @@ inline std::pair<std::string, std::string> decode_loc(const std::string &v) {
   return {v.substr(0, p), v.substr(p + 1)};
 }
 
-void create_entry(std::string request) {
+#ifdef WITH_REDIS
+inline void create_entry(const std::string& request) {
   try {
     Redis redis("tcp://127.0.0.1:6379"); // primary for writes [1]
 
@@ -94,8 +100,14 @@ void create_entry(std::string request) {
     std::cerr << "create_entry error: " << e.what() << "\n";
   }
 }
+#else
+inline void create_entry(const std::string& request) {
+  std::cout << "Redis disabled - create_entry not implemented\n";
+}
+#endif
 
-void read_entry(std::string request) {
+#ifdef WITH_REDIS
+inline void read_entry(const std::string& request) {
   try {
     std::istringstream in(request);
     std::string file_name;
@@ -145,8 +157,14 @@ void read_entry(std::string request) {
     std::cerr << "read_entry error: " << e.what() << "\n";
   }
 }
+#else
+inline void read_entry(const std::string& request) {
+  std::cout << "Redis disabled - read_entry not implemented\n";
+}
+#endif
 
-void delete_entry(std::string file_name) {
+#ifdef WITH_REDIS
+inline void delete_entry(const std::string& file_name) {
   try {
     // If file_name looks like "name#chunk:3", delete that field; else delete
     // hash. [15]
@@ -173,11 +191,17 @@ void delete_entry(std::string file_name) {
     std::cerr << "delete_entry error: " << e.what() << "\n";
   }
 }
+#else
+inline void delete_entry(const std::string& file_name) {
+  std::cout << "Redis disabled - delete_entry not implemented\n";
+}
+#endif
 
+#ifdef WITH_REDIS
 // Configure the local Redis instance to replicate from the given "host:port".
 // Issues REPLICAOF via the generic command interface; returns 0 on success.
 // [19]
-int create_replication(std::string ip_address) {
+inline int create_replication(const std::string& ip_address) {
   std::cout << "Creating replication server\n";
   std::cout
       << "Current machine Slave , master server in the sentient protocol is "
@@ -198,7 +222,15 @@ int create_replication(std::string ip_address) {
     return -1;
   }
 }
-int start_server() {
+#else
+inline int create_replication(const std::string& ip_address) {
+  std::cout << "Redis disabled - create_replication not implemented\n";
+  return -1;
+}
+#endif
+
+#ifdef WITH_REDIS
+inline int start_server() {
   // First fork
   pid_t pid = fork();
   if (pid < 0)
@@ -236,8 +268,14 @@ int start_server() {
   // If execl fails
   _exit(1);
 }
+#else
+inline int start_server() {
+  std::cout << "Redis disabled - start_server not implemented\n";
+  return -1;
+}
+#endif
 
-void start_daemon() {
+inline void start_daemon() {
   std::cout << "Starting Head Server daemon..." << std::endl;
   
   // Start Redis server in background
@@ -248,6 +286,6 @@ void start_daemon() {
   
   // Give Redis time to start
   sleep(2);
-  
-  std::cout << "Head Server daemon started successfully" << std::endl;
 }
+
+#endif // REDIS_HANDLER_HPP

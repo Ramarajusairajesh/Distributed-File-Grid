@@ -1,6 +1,6 @@
-#include "../include/heart_beat_signal.hpp"
-#include "../include/system_info.hpp"
-#include "../include/version.h"
+#include "heart_beat_signal.hpp"
+#include "system_info.hpp"
+#include "version.h"
 #include <iostream>
 #include <unordered_map>
 #include <chrono>
@@ -30,8 +30,53 @@ private:
     async_hb::task heartbeat_receiver(async_hb::Reactor& reactor) {
         std::cout << "Starting heartbeat receiver on port 9000" << std::endl;
         
-        // Start heartbeat receiver
-        co_await async_hb::recieve_signal(9000);
+        // Create a socket for receiving heartbeats
+        int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sockfd < 0) {
+            std::cerr << "Failed to create socket" << std::endl;
+            co_return;
+        }
+        
+        // Set up server address
+        struct sockaddr_in server_addr{};
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(9000);
+        server_addr.sin_addr.s_addr = INADDR_ANY;
+        
+        // Bind the socket
+        if (bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+            std::cerr << "Failed to bind socket" << std::endl;
+            close(sockfd);
+            co_return;
+        }
+        
+        // Set socket to non-blocking
+        int flags = fcntl(sockfd, F_GETFL, 0);
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+        
+        // Buffer for receiving data
+        char buffer[1024];
+        struct sockaddr_in client_addr{};
+        socklen_t client_len = sizeof(client_addr);
+        
+        while (running) {
+            // Wait for data to be available
+            co_await reactor.wait_readable(sockfd);
+            
+            // Receive the data
+            ssize_t bytes_received = recvfrom(sockfd, buffer, sizeof(buffer), 0,
+                                            (struct sockaddr*)&client_addr, &client_len);
+            
+            if (bytes_received > 0) {
+                // Process the received heartbeat
+                heart_beat::v1::HeartBeat hb;
+                if (hb.ParseFromArray(buffer, bytes_received)) {
+                    process_heartbeat(hb);
+                }
+            }
+        }
+        
+        close(sockfd);
     }
     
     async_hb::task health_monitor(async_hb::Reactor& reactor) {

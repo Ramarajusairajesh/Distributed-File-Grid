@@ -28,7 +28,11 @@ MetricsExporter::MetricsExporter(const std::string& bind_address)
       errors_total_(BuildCounter()
           .Name("heartbeat_errors_total")
           .Help("Total number of errors")
-          .Register(*registry_).Add({{ "type", "unknown" }})),
+          .Register(*registry_)),
+      errors_total_unknown_(BuildCounter()
+          .Name("heartbeat_errors_unknown_total")
+          .Help("Total number of unknown errors")
+          .Register(*registry_).Add({})),
       // Initialize histogram
       processing_time_histogram_(BuildHistogram()
           .Name("heartbeat_processing_time_seconds")
@@ -52,5 +56,11 @@ void MetricsExporter::record_message(size_t bytes, double processing_time_ns) {
 }
 
 void MetricsExporter::record_error(const std::string& type) {
-    errors_total_.Add({{ "type", type.empty() ? "unknown" : type }}).Increment();
+    if (type.empty()) {
+        errors_total_unknown_.Increment();
+    } else {
+        // Use the family to get a counter with labels
+        auto& counter = errors_total_.Add({{"type", type}});
+        counter.Increment();
+    }
 }

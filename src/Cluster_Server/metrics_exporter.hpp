@@ -29,7 +29,8 @@ private:
     // Counters
     prometheus::Counter& messages_received_;
     prometheus::Counter& bytes_received_;
-    prometheus::Counter& errors_total_;
+    prometheus::Family<prometheus::Counter>& errors_total_;
+    prometheus::Counter& errors_total_unknown_;
     
     // Histograms
     prometheus::Histogram& processing_time_histogram_;

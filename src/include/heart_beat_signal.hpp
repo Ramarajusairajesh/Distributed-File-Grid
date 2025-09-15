@@ -1,5 +1,5 @@
 #pragma once
-#include "../include/system_info.hpp"
+#include "system_info.hpp"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -76,16 +76,10 @@ inline task task::promise_type::get_return_object() {
   return task{handle_type::from_promise(*this)};
 }
 
-inline void task::promise_type::final_awaitable::await_suspend(
-    std::coroutine_handle<promise_type> h) noexcept {
-  auto &p = h.promise();
-  if (p.reactor) {
-    --p.reactor->active_tasks_;
-  }
-  h.destroy();
-}
+// Forward declaration of final_awaitable
+struct task::promise_type::final_awaitable;
 
-// Reactor declared after task; friend declaration updated
+// Reactor class definition
 struct Reactor {
   Reactor() {
     epfd_ = ::epoll_create1(EPOLL_CLOEXEC);
@@ -485,6 +479,16 @@ inline int recieve_signal(int port = 9000) {
     std::cerr << "recieve_signal error: " << e.what() << "\n";
     return 1;
   }
+}
+
+// Implementation of final_awaitable::await_suspend after Reactor is fully defined
+inline void task::promise_type::final_awaitable::await_suspend(
+    std::coroutine_handle<promise_type> h) noexcept {
+  auto &p = h.promise();
+  if (p.reactor) {
+    --p.reactor->active_tasks_;
+  }
+  h.destroy();
 }
 
 } // namespace async_hb

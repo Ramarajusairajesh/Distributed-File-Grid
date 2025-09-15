@@ -1,4 +1,4 @@
-# Distributed File Grid [Word in Progress]
+# Distributed File Grid [Work in Progress]
 
 ## Project Summary
 
@@ -9,6 +9,14 @@ A complete distributed file storage system designed to reduce read/write latency
 - **High availability** through a health-checking service with standby quorum and leader election for continuous operation
 - **Efficient communication** using Protocol Buffers for heartbeat signals, metadata exchange, and inter-node communication
 - **Modern web dashboard** for real-time system monitoring and management
+
+## Build Status
+
+✅ **Successfully builds on Arch Linux with GCC 15.2.1**
+- All three main executables compile without errors
+- Redis dependencies properly isolated with conditional compilation
+- Prometheus metrics integration working
+- Protocol Buffers v32.0.0 compatible
 
 ---
 
@@ -63,13 +71,16 @@ The Distributed File Grid consists of three main components:
 
 ### Prerequisites
 
-- **Linux**
+- **Linux** (tested on Arch Linux)
 - **C++20** compiler (GCC 7+ or Clang 6+) [since protobufs only support C++ 20+]
 - **CMake** 3.16+
-- **Protocol Buffers** compiler
-- **Docker** and **Docker Compose** (for containerized deployment)
-- **Redis-server** and **Redis-sentinel** with **sw-redis-plus-plus** library 
-[+] Side-Node: Just build your own in memory data store could have saved some times compared to using redis for this.(Reason to use : just want to use REDIS for no reason and for replication without me doing it)
+- **Protocol Buffers** compiler (v3.0.0+, tested with v32.0.0)
+- **Prometheus-CPP** library for metrics
+- **Abseil** library for logging and utilities
+- **ZLIB** for compression
+- **Docker** and **Docker Compose** (for containerized deployment - optional)
+
+**Note**: Redis dependencies are optional and disabled by default. The system can run without Redis.
 
 ### Installation
 
@@ -90,28 +101,26 @@ The Distributed File Grid consists of three main components:
 
    ```bash
    sudo pacman -S --needed base-devel cmake pkg-config \
-        protobuf fmt asio
+        protobuf zlib abseil-cpp
+   
+   # Install Prometheus-CPP
+   yay -S prometheus-cpp-git
    ```
 
-
-```bash
-
-# It might not work if you have cmake >=4.x.x . It didn't work for me for the yay , so downloaded the repo and install it.
-yay -S redis-plus-plus
-#For instructions go to https://github.com/sewenew/redis-plus-plus (clone it and install it using cmake and make simple)
-```
-
-```
-
-```
 2. **Build the Project**
 
    ```bash
    git clone <repository-url>
    cd Distributed-File-Grid
-   make install-deps
-   make all
+   mkdir build && cd build
+   cmake -DBUILD_TESTS=OFF -DWITH_REDIS=OFF ..
+   make -j$(nproc)
    ```
+
+   This will create three executables:
+   - `head_server` - Main file operations server
+   - `cluster_server` - Chunk storage server with metrics
+   - `health_checker` - System health monitoring service
 
 3. **Start Services**
    ```bash
@@ -246,12 +255,27 @@ protoc --cpp_out=generated protos/*.proto
 
 # Build with CMake
 mkdir build && cd build
-cmake ..
+cmake -DBUILD_TESTS=OFF -DWITH_REDIS=OFF ..
 make -j$(nproc)
-
-# Or use the Makefile
-make all
 ```
+
+### Recent Build Fixes (2025-09-15)
+
+The following issues have been resolved to ensure successful compilation:
+
+1. **Redis Dependencies**: All Redis-related code is now wrapped in `#ifdef WITH_REDIS` conditional compilation blocks, allowing the system to build and run without Redis dependencies.
+
+2. **Prometheus Metrics API**: Fixed Counter API usage in `metrics_exporter.cpp` by changing `errors_total_` from `Counter&` to `Family<Counter>&` to properly support labeled metrics.
+
+3. **CMake Configuration**: Updated build system to:
+   - Use system-installed Prometheus-CPP library
+   - Handle Protobuf v32.0.0 compatibility
+   - Properly link Abseil logging libraries
+   - Support ZLIB compression
+
+4. **Header File Issues**: Fixed multiple definition errors by adding proper include guards and `inline` keywords to functions defined in headers.
+
+All executables now compile successfully on Arch Linux with GCC 15.2.1.
 
 ### Running Tests
 

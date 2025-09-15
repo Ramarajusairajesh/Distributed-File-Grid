@@ -1,3 +1,6 @@
+#ifndef SYSTEM_INFO_HPP
+#define SYSTEM_INFO_HPP
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -6,6 +9,7 @@
 #include <sys/statvfs.h>
 #include <tuple>
 #include <unistd.h>
+#include <utility>  // for std::pair
 struct system_usage {
   float cpu_usage;
   float total_ram;
@@ -31,7 +35,7 @@ struct CpuStats {
 };
 
 // Helper function to format bandwidth with appropriate units
-std::string formatBandwidth(unsigned long long bytesPerSecond) {
+inline std::string formatBandwidth(unsigned long long bytesPerSecond) {
   const char *units[] = {"bps", "Kbps", "Mbps", "Gbps"};
   int unitIndex = 0;
   double speed = bytesPerSecond * 8.0; // Convert bytes to bits
@@ -56,7 +60,7 @@ std::string formatBandwidth(unsigned long long bytesPerSecond) {
 }
 
 // Function 1: Returns CPU usage percentage
-float getCpuUsagePercent() {
+inline float getCpuUsagePercent() {
   auto readCpuStats = []() -> CpuStats {
     std::ifstream file("/proc/stat");
     std::string line, cpu;
@@ -90,7 +94,7 @@ float getCpuUsagePercent() {
 }
 
 // Function 2: Returns RAM usage as {used GB, percentage used}
-std::pair<float, float> getRamUsageGBPercent() {
+inline std::pair<float, float> getRamUsageGBPercent() {
   long totalMemKB = 0, freeMemKB = 0;
   std::ifstream file("/proc/meminfo");
   std::string line;
@@ -113,10 +117,10 @@ std::pair<float, float> getRamUsageGBPercent() {
 }
 
 // Function 3: Returns disk usage as {total GB, used percentage}
-std::pair<float, float> getDiskUsageGBPercent() {
+inline std::pair<float, float> getDiskUsageGBPercent() {
   struct statvfs stat;
   if (statvfs("/", &stat) != 0) {
-    return {0.0, 0.0};
+    return {0.0f, 0.0f};
   }
 
   unsigned long long totalBytes =
@@ -133,7 +137,7 @@ std::pair<float, float> getDiskUsageGBPercent() {
 }
 
 // Function 4: Returns network bandwidth as formatted strings {in, out}
-std::pair<std::string, std::string> getNetworkBandwidthFormatted() {
+inline std::pair<std::string, std::string> getNetworkBandwidthFormatted() {
   struct NetworkStats {
     unsigned long long rxBytes = 0;
     unsigned long long txBytes = 0;
@@ -195,7 +199,7 @@ std::pair<std::string, std::string> getNetworkBandwidthFormatted() {
 }
 
 // Example usage
-system_usage system_monitor() {
+inline system_usage system_monitor() {
   // CPU Usage
   struct system_usage s;
   s.cpu_usage = getCpuUsagePercent();
@@ -217,3 +221,5 @@ system_usage system_monitor() {
   s.network_out = netOut;
   return s;
 }
+
+#endif // SYSTEM_INFO_HPP
