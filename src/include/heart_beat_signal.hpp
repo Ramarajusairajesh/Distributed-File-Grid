@@ -76,9 +76,6 @@ inline task task::promise_type::get_return_object() {
   return task{handle_type::from_promise(*this)};
 }
 
-// Forward declaration of final_awaitable
-struct task::promise_type::final_awaitable;
-
 // Reactor class definition
 struct Reactor {
   Reactor() {

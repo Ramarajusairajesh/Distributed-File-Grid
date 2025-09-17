@@ -182,6 +182,19 @@ target_link_libraries(health_checker PRIVATE
     absl::log_internal_check_op
 )
 
+# ZooKeeper Head Server Monitor
+add_executable(zk_head_server_monitor
+    src/ZooKeeper_HealthChecker/zk_head_server_monitor.cpp
+)
+
+target_include_directories(zk_head_server_monitor PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/include
+)
+
+target_link_libraries(zk_head_server_monitor PRIVATE
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+
 # Include directories for protobuf
 target_include_directories(head_server PRIVATE 
     ${CMAKE_SOURCE_DIR}/src
